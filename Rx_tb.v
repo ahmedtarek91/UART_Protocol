@@ -1,8 +1,9 @@
 module uart_Rx_tb ();
     
-    reg clk, reset, RxD; // UART RX line
-    wire [7:0] RxData; // Parallel data output
+    reg clk, reset, RxD;
+    wire [7:0] RxData;
     wire valid_rx, Parity_error, Stop_error;
+    localparam IDLE = 2'b00;
 
     // Instantiate uart_Rx as DUT
     uart_Rx DUT (
@@ -28,22 +29,23 @@ module uart_Rx_tb ();
     integer i = 0;
 
     initial begin
-        // Initialize
-        RxD = 1; // Idle state
         
         // Check reset functionality
         reset = 1;
-        repeat (16) @(negedge clk); 
-        reset = 0;
+        RxD = 0;
         repeat (16) @(negedge clk);
         
-        if (RxData != 0) begin 
+        if (DUT.state != IDLE) begin 
             $display("ERROR: Reset is corrupted!");
             $stop;
         end
 
+        reset = 0;
+        RxD = 1; // Idle state
+        repeat (32) @(negedge clk);
+
         // Test 1: Check Stop_error (send frame with stop bit = 0)
-        $display("\n=== Test 1: Stop Error Test ===");
+        $display("Test 1: Stop Error Test");
         for (i = 0; i < 3; i = i + 1) begin
             RxD = 0;                        //start bit
             repeat (16) @(negedge clk); 
@@ -69,7 +71,7 @@ module uart_Rx_tb ();
             RxD = 0;                        // stop bit (ERROR - should be 1)
             repeat (16) @(negedge clk);
             
-            // Wait for receiver to process
+            // Wait
             repeat (8) @(negedge clk);
             
             if (Stop_error != 1) begin
@@ -127,7 +129,7 @@ module uart_Rx_tb ();
         for (i = 0; i < 3; i = i + 1) begin
             RxD = 0;                        //start bit
             repeat (16) @(negedge clk); 
-            // Send data 10101010 (0xAA) - LSB first
+            // Send data 10001010 (0x8A) - LSB first
             RxD = 0;
             repeat (16) @(negedge clk); 
             RxD = 1;
@@ -155,7 +157,7 @@ module uart_Rx_tb ();
             if (valid_rx != 1) begin
                 $display("ERROR: valid_rx not set for valid frame!");
             end else begin
-                $display("Valid frame received successfully! Data = %h", RxData);
+                $display("Valid frame received successfully!");
             end
             
             if (RxData != 8'h8A) begin
@@ -167,7 +169,7 @@ module uart_Rx_tb ();
             repeat (32) @(negedge clk);
         end
         
-        $display("\n=== All tests completed ===");
+        $display("All tests completed");
         $stop;
     end
 endmodule
