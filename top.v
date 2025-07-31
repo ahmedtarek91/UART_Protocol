@@ -8,48 +8,48 @@ module top #(
 
     //Transmitter
     input transmit, // Start transmission
-    input [7:0] TxData, // Parallel data input
-    output TxD, // UART TX line
+    input [DATA_BITS-1:0] TxData, // Parallel data input
     output busy, // Transmitter busy flag
 
     //Receiver
-    input RxD,
     output [DATA_BITS-1:0] RxData,
-    output valid_rx, Parity_error, Stop_error,
-
-    //Baud_Gen
-    output wire TX_TICK, // Output tick at desired baud rate
-    output wire RX_TICK    // 16x oversampling clock (for receiver)
+    output valid_rx, 
+    output Parity_error, 
+    output Stop_error
 );
+    wire RxD; // Internal wire
+    wire TX_TICK, RX_TICK; // Baud generator clocks
     
     // UART Transmitter instantiation
-    uart_Tx #( .DATA_BITS(DATA_BITS)) Transmitter (
+    uart_Tx #(.DATA_BITS(DATA_BITS)) Transmitter (
         .clk(TX_TICK),
         .reset(reset),
         .transmit(transmit),
         .TxData(TxData),
-        .TxD(TxD),
+        .TxD(RxD),  // Connected to internal wire
         .busy(busy)
     );
 
     // UART Receiver instantiation
-    uart_Rx #( .DATA_BITS(DATA_BITS)) Receiver (
+    uart_Rx #(.DATA_BITS(DATA_BITS)) Receiver (
         .clk(RX_TICK),
         .reset(reset),
-        .RxD(RxD),
+        .RxD(RxD),  // Connected to internal wire
         .RxData(RxData),
         .valid_rx(valid_rx),
         .Parity_error(Parity_error),
-        .Stop_error(Stop_error),
+        .Stop_error(Stop_error)
     );
 
     // Baud_Generator instantiation
-    Baud_Generator #(.CLK_FREQ(CLK_FREQ), .BAUD_RATE(BAUD_RATE))
-    Baud_Gen (
+    Baud_Generator #(
+        .CLK_FREQ(CLK_FREQ), 
+        .BAUD_RATE(BAUD_RATE)
+    ) Baud_Gen (
         .clk(clk),
         .reset(reset),
-        .RX_TICK(RX_TICK),
-        .TX_TICK(TX_TICK)
-    )
+        .TX_TICK(TX_TICK),
+        .RX_TICK(RX_TICK)
+    );
 
 endmodule
