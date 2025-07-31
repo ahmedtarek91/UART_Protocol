@@ -56,7 +56,7 @@ module top_tb ();
             // Send random data
             TxData = $random;
             transmit = 1;
-            @(negedge clk);
+            @(posedge DUT.busy);
             transmit = 0;
             
             // Wait for reception
@@ -64,12 +64,11 @@ module top_tb ();
             
             // Check result
             if (RxData == TxData) begin
-                $display("  ✓ PASS: Received 0x%h", RxData);
+                $display(" PASS: Received 0x%h", RxData);
             end else begin
-                $display("  ✗ FAIL: Expected 0x%h, got 0x%h", TxData, RxData);
+                $display(" FAIL: Expected 0x%h, got 0x%h", TxData, RxData);
             end
-            
-            repeat(10) @(negedge clk);
+            repeat (10) @(negedge clk);
         end
         
         $display("Test completed");
