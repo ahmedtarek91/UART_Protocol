@@ -25,16 +25,18 @@ module uart_Tx_tb ();
     integer i;
 
     initial begin 
+
+        // Check reset functionality 
+        //state should be IDLE, TxD should be high, and busy should be low
         reset = 1;
         transmit = 1;
         TxData = 8'b10101010;
         @(negedge clk);
-        // Check reset functionality 
-        //state should be IDLE, TxD should be high, and busy should be low
         if (TxD != 1'b1 || busy != 1'b0) begin
             $display("ERROR: Reset is corrupted!");
             $stop;
         end
+        
         reset = 0;
         for (i = 0; i < 10; i = i + 1) begin
             transmit = 1;
