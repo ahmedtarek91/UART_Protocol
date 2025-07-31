@@ -1,51 +1,56 @@
-module Baud_Generator #(
-    parameter CLK_FREQ = 50_000_000,  // Default 50MHz clock
-    parameter BAUD_RATE = 9600
-)(
-    input wire clk,
-    input wire reset,    // Active-low reset
-    output wire TX_TICK, // Output tick at desired baud rate
-    output wire RX_TICK    // 16x oversampling clock (for receiver)
-);
+    module Baud_Generator #(
+        parameter CLK_FREQ  = 50_000_000,  // 50 MHz
+        parameter BAUD_RATE = 9_600        // 9 600 baud
+    )(
+        input  wire clk,
+        input  wire reset,     // synchronous or async, as you prefer
+        output wire TX_TICK,   // single‐cycle pulse @ BAUD_RATE
+        output wire RX_TICK    // single‐cycle pulse @ 16× BAUD_RATE
+    );
 
-// Calculate divisor values
-localparam TX_DIVISOR = CLK_FREQ / BAUD_RATE;
-localparam RX_DIVISOR = TX_DIVISOR / 16;
+        // Calculate divisors
+        localparam integer TX_DIV = CLK_FREQ / BAUD_RATE;
+        localparam integer RX_DIV = TX_DIV / 16;
 
-reg [15:0] TX_COUNTER;
-reg [15:0] RX_COUNTER;
-reg TX_TICK_reg;
-reg RX_TICK_reg;
+        // Counters and tick regs
+        reg [15:0] tx_cnt;
+        reg [15:0] rx_cnt;
+        reg        tx_tick_reg;
+        reg        rx_tick_reg;
 
-// Baud rate generation
-always @(posedge clk or posedge reset) begin
-    if (reset) begin
-        TX_COUNTER <= 0;
-        RX_COUNTER <= 0;
-        TX_TICK_reg <= 0;
-        RX_TICK_reg <= 0;
-    end else begin
-        // Main baud rate counter (9600 baud)
-        if (TX_COUNTER == TX_DIVISOR - 1) begin
-            TX_COUNTER <= 0;
-            TX_TICK_reg <=  ~TX_TICK_reg ;
-        end else begin
-            TX_COUNTER <= TX_COUNTER + 1;
-            //TX_TICK_reg <= 0;
+        // TX‐tick generator: one‐cycle pulse every TX_DIV clocks
+        always @(posedge clk or posedge reset) begin
+            if (reset) begin
+                tx_cnt      <= 0;
+                tx_tick_reg <= 0;
+            end
+            else if (tx_cnt == TX_DIV-1) begin
+                tx_cnt      <= 0;
+                tx_tick_reg <= 1;
+            end
+            else begin
+                tx_cnt      <= tx_cnt + 1;
+                tx_tick_reg <= 0;
+            end
         end
 
-        // 16x oversampling counter (153600 Hz for 9600 baud)
-        if (RX_COUNTER == RX_DIVISOR - 1) begin
-            RX_COUNTER <= 0;
-            RX_TICK_reg <= ~RX_TICK_reg;
-        end else begin
-            RX_COUNTER <= RX_COUNTER + 1;
-            //RX_TICK_reg <= 0;
+        // RX‐tick generator: one‐cycle pulse every RX_DIV clocks (16× oversample)
+        always @(posedge clk or posedge reset) begin
+            if (reset) begin
+                rx_cnt      <= 0;
+                rx_tick_reg <= 0;
+            end
+            else if (rx_cnt == RX_DIV-1) begin
+                rx_cnt      <= 0;
+                rx_tick_reg <= 1;
+            end
+            else begin
+                rx_cnt      <= rx_cnt + 1;
+                rx_tick_reg <= 0;
+            end
         end
-    end
-end
 
-assign TX_TICK = TX_TICK_reg;
-assign RX_TICK = RX_TICK_reg;
+        assign TX_TICK = tx_tick_reg;
+        assign RX_TICK = rx_tick_reg;
 
-endmodule
+    endmodule
