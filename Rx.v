@@ -14,15 +14,19 @@ module uart_Rx #(
     localparam STOP_BIT = 2'b11;
 
     reg [1:0] state, next_state;
+    // Shift and data registers
     reg [DATA_BITS-1:0] data_shift, next_data_shift;
     reg [DATA_BITS-1:0] data_reg, next_data_reg;
+    // Bit and tick counters
     reg [3:0] bit_counter, next_bit_counter;
     reg [4:0] tick_counter, next_tick_counter;
+    // Parity and stop bits
     reg parity_bit, next_parity_bit;
     reg stop_bit, next_stop_bit;
-    reg valid_reg, next_valid_reg;
-    reg parity_err_reg, next_parity_err_reg;
-    reg stop_err_reg, next_stop_err_reg;
+    // Output registers
+    reg valid_rx_reg, next_valid_rx_reg;
+    reg parity_error_reg, next_parity_error_reg;
+    reg stop_error_reg, next_stop_error_reg;
 
     // State memory
     always @(posedge clk or posedge reset) begin
@@ -34,9 +38,9 @@ module uart_Rx #(
             tick_counter <= 0;
             parity_bit <= 0;
             stop_bit <= 0;
-            valid_reg <= 0;
-            parity_err_reg <= 0;
-            stop_err_reg <= 0;
+            valid_rx_reg <= 0;
+            parity_error_reg <= 0;
+            stop_error_reg <= 0;
         end 
         else begin
             state <= next_state;
@@ -46,9 +50,9 @@ module uart_Rx #(
             tick_counter <= next_tick_counter;
             parity_bit <= next_parity_bit;
             stop_bit <= next_stop_bit;
-            valid_reg <= next_valid_reg;
-            parity_err_reg <= next_parity_err_reg;
-            stop_err_reg <= next_stop_err_reg;
+            valid_rx_reg <= next_valid_rx_reg;
+            parity_error_reg <= next_parity_error_reg;
+            stop_error_reg <= next_stop_error_reg;
         end
     end
 
@@ -62,27 +66,22 @@ module uart_Rx #(
         next_tick_counter = tick_counter;
         next_parity_bit = parity_bit;
         next_stop_bit = stop_bit;
-        next_valid_reg = valid_reg;
-        next_parity_err_reg = parity_err_reg;
-        next_stop_err_reg = stop_err_reg;
+        next_valid_rx_reg = valid_rx_reg;
+        next_parity_error_reg = parity_error_reg;
+        next_stop_error_reg = stop_error_reg;
 
         case (state)
             IDLE: begin
                 if (RxD == 0) begin
-                    next_tick_counter = tick_counter + 1;
+                    next_tick_counter = (tick_counter == 15) ? 0 : tick_counter + 1;
                     if (tick_counter == 0) begin
                         // Clear flags on new frame
-                        next_valid_reg = 0;
-                        next_parity_err_reg = 0;
-                        next_stop_err_reg = 0;
+                        next_valid_rx_reg = 0;
+                        next_parity_error_reg = 0;
+                        next_stop_error_reg = 0;
                     end
-                    if (tick_counter == 7 && RxD) // False start
-                        next_tick_counter = 0;
                     else if (tick_counter == 15) begin
                         next_state = DATA;
-                        next_tick_counter = 0;
-                        next_bit_counter = 0;
-                        next_data_shift = 0;
                     end
                 end
                 else next_tick_counter = 0;
@@ -96,8 +95,10 @@ module uart_Rx #(
                     
                 if (tick_counter == 15) begin
                     if (bit_counter == DATA_BITS-1) begin
-                        next_state = PARITY_BIT;
                         next_data_reg = data_shift;
+                        next_bit_counter = 0;
+                        next_data_shift = 0;
+                        next_state = PARITY_BIT;
                     end
                     else next_bit_counter = bit_counter + 1;
                 end
@@ -114,7 +115,7 @@ module uart_Rx #(
                         next_state = STOP_BIT;
                     else begin
                         next_state = IDLE;
-                        next_parity_err_reg = 1;
+                        next_parity_error_reg = 1;
                     end
                 end
             end
@@ -127,8 +128,8 @@ module uart_Rx #(
                     
                 if (tick_counter == 15) begin
                     next_state = IDLE;
-                    next_valid_reg = (stop_bit == 1'b1);
-                    next_stop_err_reg = (stop_bit != 1'b1);
+                    next_valid_rx_reg = (stop_bit == 1'b1);
+                    next_stop_error_reg = (stop_bit != 1'b1);
                 end
             end
         endcase
@@ -136,7 +137,7 @@ module uart_Rx #(
 
     // Output logic
     assign RxData = data_reg;
-    assign valid_rx = valid_reg;
-    assign Parity_error = parity_err_reg;
-    assign Stop_error = stop_err_reg;
+    assign valid_rx = valid_rx_reg;
+    assign Parity_error = parity_error_reg;
+    assign Stop_error = stop_error_reg;
 endmodule
