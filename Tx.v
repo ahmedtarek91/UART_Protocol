@@ -4,7 +4,7 @@ module uart_Tx #(
     input clk,
     input reset,
     input transmit, // Start transmission
-    input [7:0] TxData, // Parallel data input
+    input [DATA_BITS-1:0] TxData, // Parallel data input
     output TxD, // UART TX line
     output busy // Transmitter busy flag
 );
