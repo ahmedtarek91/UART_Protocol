@@ -39,6 +39,11 @@ module uart_Tx #(
 
     //Next state logic
     always @(*) begin
+        next_state = state;
+        next_shift_reg = shift_reg;
+        next_parity_bit = parity_bit;
+        next_Bit_Counter = Bit_Counter;
+
         case (state)
             IDLE: begin 
                 if (transmit) begin
@@ -47,8 +52,6 @@ module uart_Tx #(
                     next_parity_bit = ^TxData;
                     next_Bit_Counter = 0;
                 end
-                else
-                    next_state = IDLE;
             end
 
             START_BIT:  next_state = DATA_BIT;
@@ -56,11 +59,9 @@ module uart_Tx #(
             DATA_BIT: begin 
                 if (Bit_Counter == DATA_BITS-1) begin
                     next_state = PARITY_BIT;
-                    next_Bit_Counter = 0;
                 end
                 else begin
-                    next_state = DATA_BIT;
-                    next_Bit_Counter = next_Bit_Counter + 1;
+                    next_Bit_Counter = Bit_Counter + 1;
                 end
             end
 
